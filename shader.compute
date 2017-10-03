@@ -1,0 +1,48 @@
+#version 450 core
+
+layout (local_size_x = 20, local_size_y = 20) in;
+
+layout (binding = 0, rgba32f) uniform image2D img_input;
+layout (binding = 1, rgba32f) uniform image2D img_output;
+
+layout (location = 1) uniform vec4 colorLive;
+layout (location = 2) uniform vec4 colorDead;
+
+int countNeighbors(ivec2 p, bool thisAlive) {
+    int count = 0;
+
+    for(int i = -1; i < 2; i++) {
+        for(int j = -1; j < 2; j++) {
+            count += imageLoad(img_input, ivec2(p.x + i, p.y + j)).r == colorLive.r ? 1 : 0;
+        }
+    }
+
+    if(thisAlive) {
+        count--;
+    }
+
+    return count;
+}
+
+void main() {
+    ivec2 p = ivec2(gl_GlobalInvocationID.xy);
+    float texel = imageLoad(img_input, p).r;
+    vec4 result;
+    int ne = countNeighbors(p, texel == colorLive.r);
+
+    if(texel == colorLive.r) {
+        if(ne < 2 || ne > 3) {
+            result = colorDead;
+        } else {
+            result = colorLive;
+        }
+    } else {
+        if(ne == 3) {
+            result = colorLive;
+        } else {
+            result = colorDead;
+        }
+    }
+
+    imageStore(img_output, p, result);
+}
